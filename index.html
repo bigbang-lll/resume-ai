@@ -335,8 +335,8 @@
   <div class="wechat-hook" id="wechatHook">
     <h4>🎁 免费领取：AIGC 求职资料包</h4>
     <p>扫码添加微信，备注「简历」即可免费领取：<br>📘 《2026 AIGC/大模型岗位求职指南》+ 📙 《AI 行业简历模板库（50+岗位）》</p>
-    <div class="qr-placeholder">📱 微信二维码<br>（替换为实际图片）</div>
-    <p style="font-size:13px; color:#888;">微信号：<strong style="color:#2e7d32;">resume_ai_helper</strong></p>
+    <div id="wechatHookQR"></div>
+    <p style="font-size:13px; color:#888;">微信号：<strong style="color:#2e7d32;" id="wechatHookId"></strong></p>
   </div>
 
   <!-- AIGC 课程推广卡片（付费用户展示） -->
@@ -399,6 +399,12 @@ const AI_SYSTEM_PROMPT = `你是一位资深 HR + 简历优化专家，拥有 10
 使用清晰的排版，区分诊断报告、优化简历、匹配报告、面试预测四个板块。避免AI味过重的表达。`;
 
 // ============================================================
+// 配置 — 替换为你的实际链接即可上线
+// ============================================================
+const WECHAT_QR_URL = '';  // 微信收款码/二维码图片链接（替换此 URL）
+const WECHAT_ID = 'resume_ai_helper';  // 微信号
+
+// ============================================================
 // Demo 示例简历
 // ============================================================
 const SAMPLE_RESUME = `张三 | 市场营销 | 2026届本科 | 期望岗位：品牌运营
@@ -436,14 +442,40 @@ function analyzeResume(resumeText, jobTitle, industry) {
   const hasSTAR = /情境|任务|行动|结果|背景|目标|Situation|Task|Action|Result/i.test(resumeText)
     || /\d+%|提升了|增长了|减少了|增加了|优化了.*\d/.test(resumeText);
   const hasNumbers = (resumeText.match(/\d+%/g) || []).length + (resumeText.match(/\d+人|\d+万|\d+个|\d+元/g) || []).length;
-  // 跨行业关键词检测：覆盖技术、金融、市场、运营、设计、教育、医疗等主流岗位
-  const allIndustryKeywords = (resumeText.match(
-    /Spring|Python|AI|MySQL|Redis|Docker|K8s|微服务|分布式|高并发|数据分析|机器学习|深度学习|大模型|LLM|RAG|Agent|Transformer|PyTorch|TensorFlow|NLP|CV|AIGC|云计算|DevOps|CI\/CD|Kubernetes|Linux|Git|React|Vue|Angular|Node\.js|TypeScript|Go|Rust|C\+\+|算法|系统设计|架构|安全|渗透|SOC|区块链|Web3|智能合约|量化|风控|SAS|SPSS|Tableau|Power BI|Excel|SQL|财务分析|CPA|CFA|FRM|尽职调查|估值|投行|行研|市场营销|SEO|SEM|信息流|私域|社群运营|用户增长|A\/B测试|DAU|MAU|转化率|ROI|CAC|LTV|品牌|策划|文案|短视频|直播|小红书|抖音|公众号|PR|媒介|BD|销售|客户成功|CRM|SaaS|PMP|敏捷|Scrum|OKR|KPI|绩效|薪酬|HRBP|OD|TD|招聘|培训|劳动法|教学设计|课程|心理学|医学|临床|护理|药学|注册|GMP|GCP|法务|合规|合同|知识产权|专利|审计|内控|建筑|BIM|CAD|造价|电气|机械|PLC|自动化|新能源|光伏|风电|储能|芯片|EDA|PCB|供应链|采购|仓储|WMS|TMS/g
-  ) || []).length;
+  // 跨行业关键词检测 — 使用 Set 避免巨型正则卡死浏览器
+  const INDUSTRY_KEYWORDS = new Set([
+    // 技术/IT
+    'Spring','Python','AI','MySQL','Redis','Docker','K8s','微服务','分布式','高并发','数据分析','机器学习',
+    '深度学习','大模型','LLM','RAG','Agent','Transformer','PyTorch','TensorFlow','NLP','CV','AIGC',
+    '云计算','DevOps','CI/CD','Kubernetes','Linux','Git','React','Vue','Angular','Node.js','TypeScript',
+    'Go','Rust','C++','算法','系统设计','架构','安全','渗透','SOC','区块链','Web3','智能合约',
+    // 金融/财务
+    '量化','风控','SAS','SPSS','Tableau','Power BI','Excel','SQL','财务分析','CPA','CFA','FRM',
+    '尽职调查','估值','投行','行研','审计','内控',
+    // 市场/运营
+    '市场营销','SEO','SEM','信息流','私域','社群运营','用户增长','A/B测试','DAU','MAU','转化率',
+    'ROI','CAC','LTV','品牌','策划','文案','短视频','直播','小红书','抖音','公众号','PR','媒介',
+    'BD','销售','客户成功','CRM','SaaS',
+    // 管理/HR
+    'PMP','敏捷','Scrum','OKR','KPI','绩效','薪酬','HRBP','OD','TD','招聘','培训','劳动法',
+    // 教育/医疗
+    '教学设计','课程','心理学','医学','临床','护理','药学','注册','GMP','GCP',
+    // 法律/建筑/制造
+    '法务','合规','合同','知识产权','专利','建筑','BIM','CAD','造价','电气','机械','PLC','自动化',
+    // 新能源/芯片/供应链
+    '新能源','光伏','风电','储能','芯片','EDA','PCB','供应链','采购','仓储','WMS','TMS',
+  ]);
+  // 把简历文本拆成词，统计匹配的关键词数
+  const textLower = resumeText.toLowerCase();
+  let kwCount = 0;
+  for (const kw of INDUSTRY_KEYWORDS) {
+    if (textLower.includes(kw.toLowerCase())) kwCount++;
+  }
+  const hasKeywords = kwCount;
 
   // 评分
   let formatScore = wordCount > 300 ? 18 : wordCount > 150 ? 14 : 10;
-  let keywordScore = Math.min(25, hasKeywords * 6 + 7);
+  let keywordScore = Math.min(25, hasKeywords * 3 + 7);
   let starScore = hasSTAR ? (hasNumbers >= 3 ? 20 : 15) : 8;
   let quantScore = Math.min(25, hasNumbers * 7 + 5);
 
@@ -454,7 +486,7 @@ function analyzeResume(resumeText, jobTitle, industry) {
   if (wordCount < 200) issues.push({ text: '简历内容过少（不足200字），HR 无法全面了解你的能力，建议补充项目细节和成果', severity: 'critical' });
   if (hasNumbers < 3) issues.push({ text: '严重缺乏量化成果——"负责XX"不如"负责XX，效率提升30%"。每条经历都需要数字支撑', severity: 'critical' });
   if (!hasSTAR) issues.push({ text: '经历描述缺少 STAR 结构（情境-任务-行动-结果），读起来像岗位说明书而不是业绩展示', severity: 'high' });
-  if (hasKeywords < 3) issues.push({ text: '行业关键词密度过低——JD 里出现的技能词、工具名、专业术语你至少要覆盖 80%，否则 ATS / HR 初筛直接淘汰', severity: 'high' });
+  if (hasKeywords < 5) issues.push({ text: '行业关键词密度过低——JD 里出现的技能词、工具名、专业术语你至少要覆盖 80%，否则 ATS / HR 初筛直接淘汰', severity: 'high' });
 
   // 优化方向
   const advice = jobTitle
@@ -901,6 +933,7 @@ function runAnalysisOffline(activeTab, tier) {
 
     // 免费用户：展示微信引流卡片
     if (tier === 'free') {
+      renderWechatHook();
       document.getElementById('wechatHook').classList.add('active');
     }
     // 付费用户：展示 AIGC 课程推广
@@ -915,6 +948,25 @@ function runAnalysisOffline(activeTab, tier) {
 }
 
 // ============================================================
+// QR 渲染辅助
+// ============================================================
+function renderQRImg(size) {
+  const s = size || 140;
+  if (WECHAT_QR_URL) {
+    return `<img src="${WECHAT_QR_URL}" alt="微信二维码" style="width:${s}px; height:${s}px; border-radius:12px; object-fit:contain;" onerror="this.parentElement.innerHTML='<div class=qr-placeholder style=width:'+${s}+'px;height:'+${s}+'px>📱 图片加载失败<br>请检查链接</div>'">`;
+  } else {
+    return `<div class="qr-placeholder" style="width:${s}px; height:${s}px;">📱 微信收款码<br><small>（配置 WECHAT_QR_URL）</small></div>`;
+  }
+}
+
+function renderWechatHook() {
+  const qrEl = document.getElementById('wechatHookQR');
+  const idEl = document.getElementById('wechatHookId');
+  if (qrEl) qrEl.innerHTML = renderQRImg(120);
+  if (idEl) idEl.textContent = WECHAT_ID;
+}
+
+// ============================================================
 // 付款弹窗
 // ============================================================
 function showPaymentModal(tier) {
@@ -926,6 +978,7 @@ function showPaymentModal(tier) {
 
   const overlay = document.getElementById('paymentModal');
   const content = document.getElementById('paymentModalContent');
+  const qrImg = renderQRImg(160);
 
   let html = '';
   if (tier === 'basic') {
@@ -940,10 +993,11 @@ function showPaymentModal(tier) {
         <li>行业关键词优化</li>
       </ul>
       <p style="font-size:13px; color:#888;">📊 适合：想快速看到简历问题的求职者</p>
-      <button class="btn-pay orange" onclick="confirmPayment('basic')">💰 微信支付 ¥1.00</button>
+      ${qrImg}
+      <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥1.00</p>
+      <button class="btn-pay orange" onclick="confirmPayment('basic')">✅ 已完成支付，开始优化</button>
       <div class="wechat-section">
-        <p style="font-size:12px; color:#999;">支付后自动跳转结果页<br>如需发票或有问题，添加微信：</p>
-        <p class="wechat-id">📱 resume_ai_helper</p>
+        <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
   } else if (tier === 'pro') {
     html = `
@@ -958,10 +1012,11 @@ function showPaymentModal(tier) {
         <li>行业薪资参考 + 谈薪建议</li>
       </ul>
       <p style="font-size:13px; color:#888;">🚀 适合：想全面准备面试、冲刺心仪岗位的求职者</p>
-      <button class="btn-pay green" onclick="confirmPayment('pro')">💎 微信支付 ¥5.00</button>
+      ${qrImg}
+      <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥5.00</p>
+      <button class="btn-pay green" onclick="confirmPayment('pro')">✅ 已完成支付，开始优化</button>
       <div class="wechat-section">
-        <p style="font-size:12px; color:#999;">支付后自动跳转结果页<br>如需发票或有问题，添加微信：</p>
-        <p class="wechat-id">📱 resume_ai_helper</p>
+        <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
   } else if (tier === 'course') {
     html = `
@@ -980,7 +1035,7 @@ function showPaymentModal(tier) {
         </select>
       </div>
       <button class="btn-pay-confirm" onclick="submitCourseInterest()">📩 提交，等待顾问联系</button>
-      <p style="font-size:11px; color:#999; margin-top:8px;">或直接添加微信：<strong style="color:#2e7d32;">resume_ai_helper</strong></p>`;
+      <p style="font-size:11px; color:#999; margin-top:8px;">或直接添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>`;
   }
 
   content.innerHTML = html;
@@ -1022,7 +1077,7 @@ function submitCourseInterest() {
     return;
   }
   // 实际部署时发送到后端
-  alert('✅ 提交成功！\n\n课程顾问将在 24 小时内通过微信联系你。\n\n也可直接添加微信：resume_ai_helper\n备注「课程咨询」优先通过');
+  alert('✅ 提交成功！\n\n课程顾问将在 24 小时内通过微信联系你。\n\n也可直接添加微信：' + WECHAT_ID + '\n备注「课程咨询」优先通过');
   closePaymentModal();
 }
 
@@ -1196,16 +1251,16 @@ function updateCTAText(score, tier) {
   const ctaText = document.getElementById('ctaText');
   if (tier === 'free') {
     if (score < 50) {
-      ctaText.innerHTML = '你的简历 ATS 评分偏低 📉 大量投递可能石沉大海。<strong>1 元解锁 AI 逐句精修</strong>，让通过率翻 3 倍。添加微信 <strong style="color:#ffd54f;">resume_ai_helper</strong> 还可免费领 AIGC 求职资料包。';
+      ctaText.innerHTML = `你的简历 ATS 评分偏低 📉 大量投递可能石沉大海。<strong>1 元解锁 AI 逐句精修</strong>，让通过率翻 3 倍。添加微信 <strong style="color:#ffd54f;">${WECHAT_ID}</strong> 还可免费领 AIGC 求职资料包。`;
     } else if (score < 75) {
-      ctaText.innerHTML = '简历基础不错 💪 但还有优化空间。<strong>1 元解锁完整版</strong>，把 70 分变成 90 分。别忘了加微信领 AIGC 资料包！';
+      ctaText.innerHTML = `简历基础不错 💪 但还有优化空间。<strong>1 元解锁完整版</strong>，把 70 分变成 90 分。别忘了加微信 <strong style="color:#ffd54f;">${WECHAT_ID}</strong> 领 AIGC 资料包！`;
     } else {
-      ctaText.innerHTML = '简历质量很好！AI 帮你微调细节 + 面试预测。<strong>5 元深度版</strong>含岗位匹配报告。加微信 <strong style="color:#ffd54f;">resume_ai_helper</strong> 对接内推渠道。';
+      ctaText.innerHTML = `简历质量很好！AI 帮你微调细节 + 面试预测。<strong>5 元深度版</strong>含岗位匹配报告。加微信 <strong style="color:#ffd54f;">${WECHAT_ID}</strong> 对接内推渠道。`;
     }
   } else if (tier === 'paid_basic') {
-    ctaText.innerHTML = '✅ 1 元优化完成！想获得 <strong>面试预测 + 岗位深度匹配</strong>？升级 5 元版更划算。也欢迎加微信 <strong style="color:#ffd54f;">resume_ai_helper</strong> 了解 AIGC 课程。';
+    ctaText.innerHTML = `✅ 1 元优化完成！想获得 <strong>面试预测 + 岗位深度匹配</strong>？升级 5 元版更划算。也欢迎加微信 <strong style="color:#ffd54f;">${WECHAT_ID}</strong> 了解 AIGC 课程。`;
   } else if (tier === 'paid_pro') {
-    ctaText.innerHTML = '✅ 深度优化完成！<strong>添加微信 resume_ai_helper</strong>，领取：① 优化版 Word 文档 ② AIGC 行业求职指南 ③ AI 岗位内推机会。';
+    ctaText.innerHTML = `✅ 深度优化完成！<strong>添加微信 ${WECHAT_ID}</strong>，领取：① 优化版 Word 文档 ② AIGC 行业求职指南 ③ AI 岗位内推机会。`;
   } else {
     if (score < 50) {
       ctaText.textContent = '你的简历 ATS 评分偏低，大量投递可能石沉大海。1 元获取 AI 逐句精修，让通过率翻倍。';
