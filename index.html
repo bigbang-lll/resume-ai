@@ -25,10 +25,14 @@
   .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
 
   /* Header */
-  .header { text-align: center; padding: 40px 0 32px; }
+  .header { text-align: center; padding: 40px 0 32px; position: relative; }
   .header .logo { font-size: 36px; margin-bottom: 8px; }
   .header h1 { font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
   .header .subtitle { color: var(--text-light); font-size: 15px; }
+  .header-qr { position: absolute; top: 20px; right: 20px; text-align: center; }
+  .header-qr img { width: 80px; height: 80px; border-radius: 8px; border: 2px solid #e0e0e0; }
+  .header-qr .qr-label { font-size: 10px; color: #999; margin-top: 2px; }
+  @media (max-width: 600px) { .header-qr { display: none; } }
 
   /* Cards */
   .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; }
@@ -188,6 +192,10 @@
 
   <!-- Header -->
   <div class="header">
+    <div class="header-qr">
+      <img src="网站二维码.png" alt="扫一扫打开网站">
+      <div class="qr-label">📱 扫一扫打开</div>
+    </div>
     <div class="logo">📄✨</div>
     <h1>AI 简历优化助手</h1>
     <p class="subtitle">基于 ATS 筛选规则 + STAR 法则，3 分钟诊断并重写你的简历<br>适用于应届生、实习生、职场新人 | AI 驱动的智能简历优化</p>
