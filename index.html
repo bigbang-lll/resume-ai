@@ -443,7 +443,7 @@ XX快消品公司 市场部实习生 2025.06 - 2025.09
 // ============================================================
 // 模拟 AI 诊断逻辑（实际部署替换为 API 调用）
 // ============================================================
-function analyzeResume(resumeText, jobTitle, industry) {
+function analyzeResume(resumeText, jobTitle, industry, tier) {
   const hasJD = jobTitle && jobTitle.trim().length > 0;
 
   // 简历基础分析指标
@@ -503,10 +503,10 @@ function analyzeResume(resumeText, jobTitle, industry) {
     : '核心问题：缺乏量化成果和 STAR 结构。先给每条经历加上"做了什么 → 取得了什么可量化的结果"，你的简历至少能提 30 分。';
 
   // 生成优化后的简历
-  const optimized = generateOptimizedResume(resumeText, jobTitle, industry);
+  const optimized = generateOptimizedResume(resumeText, jobTitle, industry, tier);
 
   // 修改对照
-  const changes = generateChangeLog(resumeText, optimized);
+  const changes = generateChangeLog(resumeText, optimized, tier);
 
   // 岗位匹配
   const match = hasJD ? generateMatchReport(resumeText, jobTitle, industry) : null;
@@ -514,9 +514,7 @@ function analyzeResume(resumeText, jobTitle, industry) {
   return { totalScore, formatScore, keywordScore, starScore, quantScore, issues, advice, optimized, changes, match };
 }
 
-function generateOptimizedResume(text, jobTitle, industry) {
-  // 实际部署时由 AI 根据 SYSTEM_PROMPT 生成，这里是通用演示输出
-  // 从原始文本提取关键信息
+function generateOptimizedResume(text, jobTitle, industry, tier) {
   const lines = text.split('\n').filter(l => l.trim());
   const nameLine = lines[0] || '姓名 | 专业 | 学历 | 期望岗位';
   const eduLine = lines.find(l => /大学|学院|学校|教育/i.test(l)) || '教育经历待补充';
@@ -524,6 +522,80 @@ function generateOptimizedResume(text, jobTitle, industry) {
   const projLine = lines.find(l => /项目|竞赛|课题/i.test(l)) || '项目经历待补充';
   const skillLine = lines.find(l => /技能|证书|语言/i.test(l)) || '技能/证书待补充';
 
+  if (tier === 'paid_pro') {
+    // 5元深度优化：逐句精修 + 面试预测 + 薪资建议
+    return `━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 AI 深度优化简历（逐句精修版）
+
+个人信息
+${nameLine.trim()}
+📌 优化：提炼个人品牌标签，一句话概括你的核心优势
+期望岗位：${jobTitle || '（请填写目标岗位）'} | ${industry || '互联网/科技'}行业
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 教育经历
+${eduLine.trim()}
+📌 优化：补充 GPA 排名（如前30%）、奖学金、对口课程成绩
+📌 添加学术成果/竞赛获奖，强化专业背景可信度
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💼 工作/实习经历（STAR 法则逐条重构）
+${expLine.trim()}
+
+📌 逐句精修方向：
+· 每句话拆成「情境→任务→行动→结果」四层
+· 将"参与""协助"升级为"主导""独立负责""推动"
+· 为每项成果补充具体数字（% / 金额 / 人数 / 时间）
+· 植入 ${industry || '行业'} 高频关键词，覆盖 JD 80%+ 关键词
+· 突出你的独特贡献：你做了什么别人没做的？
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛠 项目 / 实践经历
+${projLine.trim()}
+
+📌 逐句精修方向：
+· 补充项目背景（为什么要做？解决什么问题？）
+· 明确团队规模和你的角色定位
+· 量化业务成果：用户数、营收、效率、成本
+· 说明你的具体贡献和技术/方法论选择理由
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 技能 / 证书
+${skillLine.trim()}
+
+📌 优化：按「精通→熟练→了解」三层分级，每项注明使用场景
+📌 补充 ${jobTitle || '目标岗位'} 所需的硬技能（参考 JD）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎤 面试预测（5 道高频题）
+基于你的简历 + ${jobTitle || '目标岗位'}，面试官可能追问：
+1. "你在实习中遇到的最大挑战是什么？怎么解决的？"
+2. "你主导的某个项目，如果重新做一次会怎么改进？"
+3. "为什么选择 ${industry || '这个行业'}？你的职业规划是什么？"
+4. "你简历中提到 [关键技能]，请举一个实际应用的例子"
+5. "${jobTitle || '这个岗位'} 最看重什么能力？你觉得自己匹配吗？"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 行业薪资参考（${industry || '互联网/科技'} | ${jobTitle || '通用岗位'}）
+· 应届/初级：年薪 8-15 万（视城市和公司规模）
+· 1-3 年经验：年薪 15-25 万
+· 谈薪建议：面试时先问对方预算范围，不要先报价
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 确认事项：
+1. 所有数字请核实后反馈真实数据
+2. 面试预测题提前准备回答，录音练习效果更好
+3. 行业术语请根据你的实际经历调整`;
+  }
+
+  // 1元基础优化 & 免费版
   return `━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 优化后简历（AI 基于 STAR 法则重写）
 
@@ -570,21 +642,36 @@ ${skillLine.trim()}
 ⚠️ 需要你确认的事项：
 1. 所有量化数字是否准确？请核实后反馈
 2. 是否有遗漏的关键项目/经历/证书？补充进来
-3. 行业术语是否和你实际工作一致？（不同公司叫法可能不同）`;
+3. 行业术语是否和你实际工作一致？（不同公司叫法可能不同）
+💡 升级 5 元深度版可解锁：逐句精修 + 面试预测 + 薪资参考`;
 }
 
-function generateChangeLog(original, optimized) {
-  return [
+function generateChangeLog(original, optimized, tier) {
+  const basicChanges = [
     { tag: 'add', text: '补充了教育经历中的主修课程和学术亮点，覆盖目标岗位的基础要求' },
     { tag: 'fix', text: '将模糊的"负责XX工作"重构为 STAR 结构——明确背景、任务、行动、可量化的结果' },
     { tag: 'add', text: '为每段经历补充量化数据：业绩指标、团队规模、预算金额、效率提升比例等' },
     { tag: 'fix', text: '将"参与""协助"等弱动词升级为"主导""独立负责""推动"，突出你的主动性' },
-    { tag: 'fix', text: '逐条对照目标岗位 JD，补充缺失的行业关键词和工具技能名称' },
-    { tag: 'add', text: '补充项目/实践经历的背景和商业目标，让 HR 理解你做的事"为什么重要"' },
     { tag: 'del', text: '移除空洞的自我评价和"吃苦耐劳""性格开朗"等无信息量的表述' },
-    { tag: 'fix', text: '技能列表从笼统的"熟悉XX"改为分层展示（精通/熟练/了解），并注明具体工具版本' },
+    { tag: 'fix', text: '技能列表从笼统的"熟悉XX"改为分层展示（精通/熟练/了解）' },
     { tag: 'add', text: '所有量化数据标注"请确认"，确保 AI 不编造经历' },
   ];
+
+  if (tier === 'paid_pro') {
+    return [
+      ...basicChanges,
+      { tag: 'fix', text: '逐句对照目标岗位 JD 重写每条经历，确保关键词覆盖率达 80%+' },
+      { tag: 'add', text: '为实习经历添加"情境背景"段落，让 HR 理解你所处的业务环境' },
+      { tag: 'add', text: '每项行动补充决策理由——"为什么选择这个方案而不是别的"' },
+      { tag: 'fix', text: '量化数据标注了行业对标——"你的成果在同行中处于什么水平"' },
+      { tag: 'add', text: '补充项目经历的商业目标和技术选型理由，展示全局思维' },
+      { tag: 'add', text: '技能项补充了使用场景和熟练程度，避免"了解"一词的模糊表述' },
+      { tag: 'add', text: '新增面试预测 5 题 + 回答思路，提前准备面试不再被动' },
+      { tag: 'add', text: '新增行业薪资参考 + 谈薪建议，帮你拿到合理 offer' },
+    ];
+  }
+
+  return basicChanges;
 }
 
 function generateMatchReport(text, jobTitle, industry) {
@@ -924,7 +1011,7 @@ function runAnalysisOffline(activeTab, tier) {
 
   // 模拟分析延迟
   setTimeout(() => {
-    const result = analyzeResume(resumeText, jobTitle, industry);
+    const result = analyzeResume(resumeText, jobTitle, industry, tier);
     currentResult = result;
 
     if (tier === 'free') {
