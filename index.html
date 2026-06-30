@@ -1010,7 +1010,8 @@ async function showPaymentModal(tier) {
       </ul>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥1.00</p>
-      <p style="font-size:14px; color:var(--orange); font-weight:600;" id="countdownText">⏳ 扫码支付后，等待管理员确认…</p>
+      <p style="font-size:14px; color:var(--orange); font-weight:600;" id="countdownText">⏳ 扫码支付中…</p>
+      <button class="btn-pay orange" onclick="skipToOptimize('basic')" id="skipBtn">✅ 我已支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999; margin-bottom:6px;">支付遇到问题？扫码添加微信：</p>
         ${contactQR}
@@ -1030,7 +1031,8 @@ async function showPaymentModal(tier) {
       </ul>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥5.00</p>
-      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">⏳ 扫码支付后，等待管理员确认…</p>
+      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">⏳ 扫码支付中…</p>
+      <button class="btn-pay green" onclick="skipToOptimize('pro')" id="skipBtn">✅ 我已支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999; margin-bottom:6px;">支付遇到问题？扫码添加微信：</p>
         ${contactQR}
@@ -1121,11 +1123,29 @@ function startPaymentPolling(sessionUrl, tier) {
   }, 2000);
 }
 
-// 回退：直接开始（API 不可用时）
+// 回退：15 秒倒计时（API 不可用时），让用户有足够时间扫码
 function startPaymentCountdown(tier) {
+  clearTimeout(paymentTimer);
+  let sec = 15;
   const el = document.getElementById('countdownText');
+  if (!el) return;
+  function tick() {
+    if (sec <= 0) { el.textContent = '⏳ 正在启动优化…'; confirmPayment(tier); return; }
+    el.textContent = `⏳ 扫码支付后 ${sec} 秒自动开始优化…`;
+    sec--;
+    paymentTimer = setTimeout(tick, 1000);
+  }
+  tick();
+}
+
+// 用户支付后手动跳过倒计时
+function skipToOptimize(tier) {
+  clearTimeout(paymentTimer);
+  const el = document.getElementById('countdownText');
+  const btn = document.getElementById('skipBtn');
   if (el) el.textContent = '⏳ 正在启动优化…';
-  paymentTimer = setTimeout(() => confirmPayment(tier), 500);
+  if (btn) btn.style.display = 'none';
+  confirmPayment(tier);
 }
 
 function closePaymentModal() {
