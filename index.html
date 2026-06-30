@@ -403,7 +403,6 @@ const AI_SYSTEM_PROMPT = `你是一位资深 HR + 简历优化专家，拥有 10
 // ============================================================
 const WECHAT_QR_URL = '微信收款码.jpg';  // 微信收款码/二维码图片链接
 const WECHAT_ID = 'resume_ai_helper';  // 微信号
-const PAYMENT_INDEX_URL = '';  // 支付索引 URL（首次使用先在 admin.html 创建索引，把 URL 填到这里）
 
 // ============================================================
 // Demo 示例简历
@@ -968,17 +967,9 @@ function renderWechatHook() {
 }
 
 // ============================================================
-// 付款弹窗 — 后台确认收款后才开始倒计时
+// 付款弹窗 — 扫码后自动倒计时开始优化
 // ============================================================
-const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 let paymentTimer = null;
-let paymentPollTimer = null;
-let currentPaymentSession = null;
-
-// 生成简短会话 ID
-function genSessionId() {
-  return 'pay_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-}
 
 async function showPaymentModal(tier) {
   const resumeText = document.getElementById('resumeInput').value.trim();
@@ -990,7 +981,6 @@ async function showPaymentModal(tier) {
   const overlay = document.getElementById('paymentModal');
   const content = document.getElementById('paymentModalContent');
   const qrImg = renderQRImg(160);
-  const sessionId = genSessionId();
 
   let html = '';
   if (tier === 'basic') {
@@ -1006,8 +996,8 @@ async function showPaymentModal(tier) {
       </ul>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥1.00</p>
-      <p style="font-size:12px; color:#999;">订单号：<code style="font-size:10px;">${sessionId}</code></p>
-      <p style="font-size:14px; color:var(--orange); font-weight:600;" id="countdownText">⏳ 等待管理员确认收款…</p>
+      <p style="font-size:14px; color:var(--orange); font-weight:600;" id="countdownText">⏳ 扫码支付中…</p>
+      <button class="btn-pay orange" onclick="skipToOptimize('basic')" id="skipBtn">✅ 我已支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
@@ -1025,8 +1015,8 @@ async function showPaymentModal(tier) {
       </ul>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥5.00</p>
-      <p style="font-size:12px; color:#999;">订单号：<code style="font-size:10px;">${sessionId}</code></p>
-      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">⏳ 等待管理员确认收款…</p>
+      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">⏳ 扫码支付中…</p>
+      <button class="btn-pay green" onclick="skipToOptimize('pro')" id="skipBtn">✅ 我已支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
@@ -1057,107 +1047,46 @@ async function showPaymentModal(tier) {
     if (e.target === overlay) closePaymentModal();
   };
 
-  // 创建支付会话 → 轮询等待管理员确认 → 倒计时 → 自动开始
+  // 扫码后自动倒计时 → 用户也可以手动跳过
   if (tier === 'basic' || tier === 'pro') {
-    if (PAYMENT_INDEX_URL) {
-      try {
-        // 1. 创建支付会话 blob
-        const res = await fetch(JSONBLOB_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: sessionId,
-            status: 'pending',
-            tier: tier,
-            amount: tier === 'basic' ? 1 : 5,
-            createdAt: new Date().toISOString()
-          })
-        });
-        if (res.ok) {
-          const blobUrl = res.headers.get('Location');
-          // 2. 注册到索引
-          try {
-            const idxRes = await fetch(PAYMENT_INDEX_URL);
-            const idx = await idxRes.json();
-            idx.sessions = idx.sessions || [];
-            idx.sessions.push({ id: sessionId, blobUrl, tier, amount: tier === 'basic' ? 1 : 5, status: 'pending', createdAt: new Date().toISOString() });
-            idx.updatedAt = new Date().toISOString();
-            await fetch(PAYMENT_INDEX_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(idx) });
-          } catch(e) { console.warn('索引注册失败', e); }
-          // 3. 轮询等待确认
-          currentPaymentSession = { id: sessionId, url: blobUrl, tier: tier };
-          startPaymentPolling(blobUrl, tier);
-          return;
-        }
-      } catch (e) {
-        console.warn('创建支付会话失败，使用本地模式', e);
-      }
-    }
-    // 未配置索引或 API 不可用时，回退到直接倒计时
     startPaymentCountdown(tier);
   }
 }
 
-// 轮询等待管理员在后台确认收款
-function startPaymentPolling(sessionUrl, tier) {
-  clearInterval(paymentPollTimer);
-  let attempts = 0;
-  const maxAttempts = 150; // 5 分钟（每 2 秒一次）
-
-  paymentPollTimer = setInterval(async () => {
-    attempts++;
-    try {
-      const res = await fetch(sessionUrl);
-      if (!res.ok) throw new Error('poll failed');
-      const data = await res.json();
-
-      if (data.status === 'confirmed') {
-        clearInterval(paymentPollTimer);
-        // 更新 UI：显示确认状态
-        const el = document.getElementById('countdownText');
-        if (el) {
-          el.textContent = '✅ 收款已确认！即将开始优化…';
-          el.style.color = 'var(--green)';
-        }
-        // 短暂延迟后启动倒计时
-        paymentTimer = setTimeout(() => startPaymentCountdown(tier), 800);
-        return;
-      }
-    } catch (e) {
-      console.warn('轮询失败', e);
-    }
-
-    if (attempts >= maxAttempts) {
-      clearInterval(paymentPollTimer);
-      const el = document.getElementById('countdownText');
-      if (el) el.textContent = '⚠️ 等待超时，请重新发起或联系微信：' + WECHAT_ID;
-    }
-  }, 2000);
-}
-
-// 倒计时 → 自动开始优化
+// 倒计时 → 自动开始优化（15秒，足够完成扫码支付）
 function startPaymentCountdown(tier) {
   clearTimeout(paymentTimer);
-  let sec = 5;
+  let sec = 15;
   const el = document.getElementById('countdownText');
+  const btn = document.getElementById('skipBtn');
   if (!el) return;
 
   function tick() {
     if (sec <= 0) {
       el.textContent = '⏳ 正在启动优化…';
+      if (btn) btn.style.display = 'none';
       confirmPayment(tier);
       return;
     }
-    el.textContent = `⏳ ${sec} 秒后自动开始优化…`;
+    el.textContent = `⏳ 扫码支付后 ${sec} 秒自动开始优化…`;
     sec--;
     paymentTimer = setTimeout(tick, 1000);
   }
   tick();
 }
 
+// 用户支付后手动跳过倒计时
+function skipToOptimize(tier) {
+  clearTimeout(paymentTimer);
+  const el = document.getElementById('countdownText');
+  const btn = document.getElementById('skipBtn');
+  if (el) el.textContent = '⏳ 正在启动优化…';
+  if (btn) btn.style.display = 'none';
+  confirmPayment(tier);
+}
+
 function closePaymentModal() {
   clearTimeout(paymentTimer);
-  clearInterval(paymentPollTimer);
   document.getElementById('paymentModal').classList.remove('active');
 }
 
