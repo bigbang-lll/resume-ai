@@ -1119,7 +1119,11 @@ function startPaymentPolling(sessionUrl, tier) {
         return;
       }
     } catch (e) { console.warn('轮询失败', e); }
-    if (attempts >= 300) { clearInterval(paymentPollTimer); }
+    if (attempts >= 300) {
+      clearInterval(paymentPollTimer);
+      const el = document.getElementById('countdownText');
+      if (el) { el.textContent = '⚠️ 等待超时，请关闭后重试'; el.style.color = 'var(--red)'; }
+    }
   }, 2000);
 }
 
