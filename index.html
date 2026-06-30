@@ -969,6 +969,8 @@ function renderWechatHook() {
 // ============================================================
 // 付款弹窗
 // ============================================================
+let paymentTimer = null;  // 自动开始倒计时
+
 function showPaymentModal(tier) {
   const resumeText = document.getElementById('resumeInput').value.trim();
   if (tier !== 'course' && !resumeText) {
@@ -995,7 +997,8 @@ function showPaymentModal(tier) {
       <p style="font-size:13px; color:#888;">📊 适合：想快速看到简历问题的求职者</p>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥1.00</p>
-      <button class="btn-pay orange" onclick="confirmPayment('basic')">✅ 已完成支付，开始优化</button>
+      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">支付后自动开始优化…</p>
+      <button class="btn-pay orange" onclick="skipCountdown('basic')">✅ 已完成支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
@@ -1014,7 +1017,8 @@ function showPaymentModal(tier) {
       <p style="font-size:13px; color:#888;">🚀 适合：想全面准备面试、冲刺心仪岗位的求职者</p>
       ${qrImg}
       <p style="font-size:12px; color:#999; margin:6px 0;">👆 微信扫码支付 ¥5.00</p>
-      <button class="btn-pay green" onclick="confirmPayment('pro')">✅ 已完成支付，开始优化</button>
+      <p style="font-size:14px; color:var(--green); font-weight:600;" id="countdownText">支付后自动开始优化…</p>
+      <button class="btn-pay green" onclick="skipCountdown('pro')">✅ 已完成支付，立即开始</button>
       <div class="wechat-section">
         <p style="font-size:12px; color:#999;">支付遇到问题？添加微信：<strong style="color:#2e7d32;">${WECHAT_ID}</strong></p>
       </div>`;
@@ -1045,9 +1049,43 @@ function showPaymentModal(tier) {
   overlay.onclick = function(e) {
     if (e.target === overlay) closePaymentModal();
   };
+
+  // 自动倒计时开始优化（基础版/专业版）
+  if (tier === 'basic' || tier === 'pro') {
+    startPaymentCountdown(tier);
+  }
+}
+
+// 倒计时自动开始
+function startPaymentCountdown(tier) {
+  clearTimeout(paymentTimer);
+  let sec = 5;
+  const el = document.getElementById('countdownText');
+  if (!el) return;
+
+  function tick() {
+    if (sec <= 0) {
+      el.textContent = '⏳ 正在启动优化…';
+      confirmPayment(tier);
+      return;
+    }
+    el.textContent = `⏳ 扫码支付后，${sec} 秒内自动开始优化…`;
+    sec--;
+    paymentTimer = setTimeout(tick, 1000);
+  }
+  tick();
+}
+
+// 用户手动跳过倒计时
+function skipCountdown(tier) {
+  clearTimeout(paymentTimer);
+  const el = document.getElementById('countdownText');
+  if (el) el.textContent = '⏳ 正在启动优化…';
+  confirmPayment(tier);
 }
 
 function closePaymentModal() {
+  clearTimeout(paymentTimer);
   document.getElementById('paymentModal').classList.remove('active');
 }
 
