@@ -1097,8 +1097,8 @@ function startPaymentPolling(sessionUrl, tier) {
       if (data.status === 'confirmed') {
         clearInterval(paymentPollTimer);
         const el = document.getElementById('countdownText');
-        if (el) { el.textContent = '✅ 收款已确认！即将开始优化…'; el.style.color = 'var(--green)'; }
-        paymentTimer = setTimeout(() => startPaymentCountdown(tier), 800);
+        if (el) { el.textContent = '✅ 收款已确认！正在启动优化…'; el.style.color = 'var(--green)'; }
+        paymentTimer = setTimeout(() => confirmPayment(tier), 500);
         return;
       }
     } catch (e) { console.warn('轮询失败', e); }
@@ -1106,19 +1106,11 @@ function startPaymentPolling(sessionUrl, tier) {
   }, 2000);
 }
 
-// 倒计时 5 秒 → 自动开始
+// 回退：直接开始（API 不可用时）
 function startPaymentCountdown(tier) {
-  clearTimeout(paymentTimer);
-  let sec = 5;
   const el = document.getElementById('countdownText');
-  if (!el) return;
-  function tick() {
-    if (sec <= 0) { el.textContent = '⏳ 正在启动优化…'; confirmPayment(tier); return; }
-    el.textContent = `⏳ ${sec} 秒后自动开始优化…`;
-    sec--;
-    paymentTimer = setTimeout(tick, 1000);
-  }
-  tick();
+  if (el) el.textContent = '⏳ 正在启动优化…';
+  paymentTimer = setTimeout(() => confirmPayment(tier), 500);
 }
 
 function closePaymentModal() {
