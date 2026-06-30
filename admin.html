@@ -47,12 +47,7 @@
 <div class="container">
   <div class="header">
     <h1>💼 收款管理后台</h1>
-    <p style="color:#999; font-size:13px;">用户扫码支付后，在此确认收款，系统自动为用户启动简历优化</p>
-    <div id="configBox" style="margin-top:12px; padding:12px; background:#fffbe6; border:1px solid #ffd54f; border-radius:8px; text-align:left; font-size:12px; display:none;">
-      <strong>⚠️ 配置提醒：</strong>将下面的索引 URL 填入 <code>index.html</code> 的 <code>PAYMENT_INDEX_URL</code> 变量中，两个页面才能联动：<br>
-      <code id="indexUrlDisplay" style="word-break:break-all; color:var(--primary);"></code>
-      <br><button onclick="copyIndexUrl()" style="margin-top:6px; padding:4px 12px; font-size:12px; cursor:pointer;">📋 复制 URL</button>
-    </div>
+    <p style="color:#999; font-size:13px;">用户扫码支付后，点一下确认，系统自动为用户启动优化</p>
   </div>
 
   <!-- 统计 -->
@@ -83,79 +78,15 @@
 <script>
 const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 // 本地存储所有已创建的会话 URL（实际部署时改用数据库）
-const STORAGE_KEY = 'resume_ai_sessions';
-
-function getStoredSessions() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; }
-}
-function storeSession(session) {
-  const sessions = getStoredSessions();
-  // 去重
-  const idx = sessions.findIndex(s => s.id === session.id);
-  if (idx >= 0) sessions[idx] = session;
-  else sessions.push(session);
-  // 只保留最近 200 条
-  if (sessions.length > 200) sessions.splice(0, sessions.length - 200);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-}
-
-// ============================================================
-// 注意：jsonblob.com 的 API 只能通过 URL 访问已创建的 blob。
-// 无法列出所有 blob。因此本管理后台需要配合以下机制：
-//
-// 方案 A（当前实现）：用户支付时，页面将 session URL 存储到
-// 另一个公开可写的 blob 作为"索引"。管理后台读取索引后逐个检查。
-//
-// 方案 B（推荐升级）：部署一个简单的后端（如 Cloudflare Worker）
-// 来管理会话列表。
-//
-// 当前实现使用方案 A：一个"索引 blob"汇总所有支付会话。
-// ============================================================
-const INDEX_KEY = 'resume_ai_payment_index_v1';
-let INDEX_BLOB_URL = localStorage.getItem(INDEX_KEY);
-
-async function getOrCreateIndex() {
-  if (INDEX_BLOB_URL) {
-    try {
-      const res = await fetch(INDEX_BLOB_URL);
-      if (res.ok) { showConfigBox(INDEX_BLOB_URL); return INDEX_BLOB_URL; }
-    } catch(e) {}
-  }
-  // 创建新的索引 blob
-  const res = await fetch(JSONBLOB_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessions: [], updatedAt: new Date().toISOString() })
-  });
-  INDEX_BLOB_URL = res.headers.get('Location');
-  localStorage.setItem(INDEX_KEY, INDEX_BLOB_URL);
-  showConfigBox(INDEX_BLOB_URL);
-  return INDEX_BLOB_URL;
-}
-
-function showConfigBox(url) {
-  const box = document.getElementById('configBox');
-  const display = document.getElementById('indexUrlDisplay');
-  if (box && display) {
-    display.textContent = url;
-    box.style.display = 'block';
-  }
-}
-
-function copyIndexUrl() {
-  const url = document.getElementById('indexUrlDisplay').textContent;
-  if (url && navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => showToast('✅ 已复制！粘贴到 index.html 的 PAYMENT_INDEX_URL 变量中'));
-  }
-}
+// 支付索引 URL — 与 index.html 共享，手机和电脑通过此 URL 通信
+const INDEX_URL = 'https://jsonblob.com/api/jsonBlob/019f173f-a3ec-77dc-939a-095e47c680d4';
 
 async function loadPayments() {
   const pendingDiv = document.getElementById('pendingList');
   pendingDiv.innerHTML = '<div class="empty">加载中…</div>';
 
   try {
-    const indexUrl = await getOrCreateIndex();
-    const res = await fetch(indexUrl);
+    const res = await fetch(INDEX_URL);
     const index = await res.json();
     const sessions = index.sessions || [];
 
@@ -220,16 +151,15 @@ async function confirmPayment(sessionId, blobUrl) {
     });
     if (!res.ok) throw new Error('update failed');
 
-    // 更新本地索引
-    const indexUrl = await getOrCreateIndex();
-    const idxRes = await fetch(indexUrl);
+    // 更新索引中的状态
+    const idxRes = await fetch(INDEX_URL);
     const index = await idxRes.json();
     const sessions = index.sessions || [];
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
       session.status = 'confirmed';
       session.confirmedAt = new Date().toISOString();
-      await fetch(indexUrl, {
+      await fetch(INDEX_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessions, updatedAt: new Date().toISOString() })
