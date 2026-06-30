@@ -187,17 +187,42 @@
     <div class="form-row">
       <div class="form-group">
         <label>🎯 目标岗位（可选，填写后匹配更精准）</label>
-        <input type="text" id="jobTitle" placeholder="如：AI产品经理 / 数据分析师 / Java开发" style="width:100%; padding:12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;">
+        <input type="text" id="jobTitle" placeholder="如：产品经理 / 市场营销 / 财务分析 / 运营 / 设计师 / 工程师 / 销售 / 教师 / 护士…" style="width:100%; padding:12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;">
       </div>
       <div class="form-group">
         <label>🏢 目标行业</label>
         <select id="industry">
-          <option value="互联网/科技">互联网/科技</option>
-          <option value="金融">金融</option>
-          <option value="国企/央企">国企/央企</option>
-          <option value="外企">外企</option>
-          <option value="制造业">制造业</option>
-          <option value="咨询">咨询</option>
+          <optgroup label="🔥 热门行业">
+            <option value="互联网/科技">互联网/科技</option>
+            <option value="人工智能/大模型">人工智能/大模型</option>
+            <option value="金融/银行/保险">金融/银行/保险</option>
+            <option value="电子商务/零售">电子商务/零售</option>
+            <option value="新能源汽车">新能源汽车</option>
+            <option value="半导体/芯片">半导体/芯片</option>
+            <option value="游戏/文娱">游戏/文娱</option>
+          </optgroup>
+          <optgroup label="🏭 传统行业">
+            <option value="制造业">制造业</option>
+            <option value="房地产/建筑">房地产/建筑</option>
+            <option value="能源/电力/环保">能源/电力/环保</option>
+            <option value="物流/供应链/运输">物流/供应链/运输</option>
+            <option value="汽车">汽车</option>
+            <option value="农业/食品">农业/食品</option>
+          </optgroup>
+          <optgroup label="🏛️ 体制 / 公共">
+            <option value="国企/央企">国企/央企</option>
+            <option value="政府/事业单位">政府/事业单位</option>
+            <option value="外企">外企</option>
+          </optgroup>
+          <optgroup label="💼 服务业">
+            <option value="咨询/专业服务">咨询/专业服务</option>
+            <option value="教育培训/科研">教育培训/科研</option>
+            <option value="医疗/健康/医药">医疗/健康/医药</option>
+            <option value="法律/合规">法律/合规</option>
+            <option value="酒店/旅游/餐饮">酒店/旅游/餐饮</option>
+            <option value="文化/传媒/广告">文化/传媒/广告</option>
+            <option value="通信/运营商">通信/运营商</option>
+          </optgroup>
         </select>
       </div>
     </div>
@@ -307,29 +332,29 @@ const AI_SYSTEM_PROMPT = `你是一位资深 HR + 简历优化专家，拥有 10
 // ============================================================
 // Demo 示例简历
 // ============================================================
-const SAMPLE_RESUME = `张三 | 计算机科学与技术 | 2026届本科 | 期望岗位：Java开发工程师
+const SAMPLE_RESUME = `张三 | 市场营销 | 2026届本科 | 期望岗位：品牌运营
 
 教育经历：
-XX大学 计算机科学与技术 本科 2022.09 - 2026.06
-GPA 3.2/4.0
+XX大学 市场营销 本科 2022.09 - 2026.06
+GPA 3.4/4.0 | 主修课程：市场营销学、消费者行为学、品牌管理、数据分析
 
 实习经历：
-XX科技有限公司 Java开发实习生 2025.06 - 2025.09
-- 负责公司内部管理系统的开发
-- 参与项目需求分析和数据库设计
-- 编写接口文档
-- 修复系统bug
+XX快消品公司 市场部实习生 2025.06 - 2025.09
+- 参与新品上市推广活动
+- 负责社交媒体账号内容发布
+- 协助整理市场调研数据
+- 跟进活动物料制作
 
 项目经历：
-校园二手交易平台 2024.09 - 2024.12
-- 使用Spring Boot框架开发
-- 实现了用户登录注册功能
-- 负责数据库的设计
+校园文创品牌推广 2024.09 - 2024.12
+- 策划校园文创产品线
+- 组织线上线下联动宣传活动
+- 管理社团公众号运营
 
 技能：
-- 熟悉Java、Python
-- 了解Spring Boot、MySQL
-- 会使用Git`;
+- 熟练使用Excel、PPT
+- 基础Photoshop、剪映
+- CET-6，良好的英语读写能力`;
 
 // ============================================================
 // 模拟 AI 诊断逻辑（实际部署替换为 API 调用）
@@ -342,7 +367,10 @@ function analyzeResume(resumeText, jobTitle, industry) {
   const hasSTAR = /情境|任务|行动|结果|背景|目标|Situation|Task|Action|Result/i.test(resumeText)
     || /\d+%|提升了|增长了|减少了|增加了|优化了.*\d/.test(resumeText);
   const hasNumbers = (resumeText.match(/\d+%/g) || []).length + (resumeText.match(/\d+人|\d+万|\d+个|\d+元/g) || []).length;
-  const hasKeywords = (resumeText.match(/Spring|Python|AI|MySQL|Redis|Docker|K8s|微服务|分布式|高并发|数据分析|机器学习/g) || []).length;
+  // 跨行业关键词检测：覆盖技术、金融、市场、运营、设计、教育、医疗等主流岗位
+  const allIndustryKeywords = (resumeText.match(
+    /Spring|Python|AI|MySQL|Redis|Docker|K8s|微服务|分布式|高并发|数据分析|机器学习|深度学习|大模型|LLM|RAG|Agent|Transformer|PyTorch|TensorFlow|NLP|CV|AIGC|云计算|DevOps|CI\/CD|Kubernetes|Linux|Git|React|Vue|Angular|Node\.js|TypeScript|Go|Rust|C\+\+|算法|系统设计|架构|安全|渗透|SOC|区块链|Web3|智能合约|量化|风控|SAS|SPSS|Tableau|Power BI|Excel|SQL|财务分析|CPA|CFA|FRM|尽职调查|估值|投行|行研|市场营销|SEO|SEM|信息流|私域|社群运营|用户增长|A\/B测试|DAU|MAU|转化率|ROI|CAC|LTV|品牌|策划|文案|短视频|直播|小红书|抖音|公众号|PR|媒介|BD|销售|客户成功|CRM|SaaS|PMP|敏捷|Scrum|OKR|KPI|绩效|薪酬|HRBP|OD|TD|招聘|培训|劳动法|教学设计|课程|心理学|医学|临床|护理|药学|注册|GMP|GCP|法务|合规|合同|知识产权|专利|审计|内控|建筑|BIM|CAD|造价|电气|机械|PLC|自动化|新能源|光伏|风电|储能|芯片|EDA|PCB|供应链|采购|仓储|WMS|TMS/g
+  ) || []).length;
 
   // 评分
   let formatScore = wordCount > 300 ? 18 : wordCount > 150 ? 14 : 10;
@@ -357,7 +385,7 @@ function analyzeResume(resumeText, jobTitle, industry) {
   if (wordCount < 200) issues.push({ text: '简历内容过少（不足200字），HR 无法全面了解你的能力，建议补充项目细节和成果', severity: 'critical' });
   if (hasNumbers < 3) issues.push({ text: '严重缺乏量化成果——"负责XX"不如"负责XX，效率提升30%"。每条经历都需要数字支撑', severity: 'critical' });
   if (!hasSTAR) issues.push({ text: '经历描述缺少 STAR 结构（情境-任务-行动-结果），读起来像岗位说明书而不是业绩展示', severity: 'high' });
-  if (hasKeywords < 3) issues.push({ text: '技术关键词密度过低，ATS 系统可能直接筛掉你的简历。JD 里的技能词你要覆盖 80%+', severity: 'high' });
+  if (hasKeywords < 3) issues.push({ text: '行业关键词密度过低——JD 里出现的技能词、工具名、专业术语你至少要覆盖 80%，否则 ATS / HR 初筛直接淘汰', severity: 'high' });
 
   // 优化方向
   const advice = jobTitle
@@ -377,78 +405,75 @@ function analyzeResume(resumeText, jobTitle, industry) {
 }
 
 function generateOptimizedResume(text, jobTitle, industry) {
-  // 实际部署时由 AI 根据 SYSTEM_PROMPT 生成，这里是模拟输出
+  // 实际部署时由 AI 根据 SYSTEM_PROMPT 生成，这里是通用演示输出
+  // 从原始文本提取关键信息
+  const lines = text.split('\n').filter(l => l.trim());
+  const nameLine = lines[0] || '姓名 | 专业 | 学历 | 期望岗位';
+  const eduLine = lines.find(l => /大学|学院|学校|教育/i.test(l)) || '教育经历待补充';
+  const expLine = lines.find(l => /实习|工作|经验/i.test(l)) || '实习/工作经历待补充';
+  const projLine = lines.find(l => /项目|竞赛|课题/i.test(l)) || '项目经历待补充';
+  const skillLine = lines.find(l => /技能|证书|语言/i.test(l)) || '技能/证书待补充';
+
   return `━━━━━━━━━━━━━━━━━━━━━━━━━━
-张三 | 计算机科学与技术 | 2026届本科
-期望岗位：${jobTitle || 'Java开发工程师'} | ${industry || '互联网/科技'}行业
+📋 优化后简历（AI 基于 STAR 法则重写）
+
+个人信息
+${nameLine.trim()}
+期望岗位：${jobTitle || '（请填写目标岗位，匹配更精准）'} | ${industry || '互联网/科技'}行业
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📚 教育经历
-XX大学 | 计算机科学与技术 | 本科 | 2022.09 - 2026.06
-GPA 3.2/4.0 | 主修课程：数据结构、算法设计、数据库原理、操作系统、计算机网络
-（✅ 补充了主修课程，覆盖 JD 基础技能关键词）
+${eduLine.trim()}
+（✅ 已补充与岗位相关的专业课程和学术成果）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💼 实习经历
-XX科技有限公司 | Java开发实习生 | 2025.06 - 2025.09
+💼 工作/实习经历
+${expLine.trim()}
 
-【核心项目：企业内部管理系统重构】
-· 独立负责「员工考勤」和「报销审批」2个核心模块的后端开发，
-  使用 Spring Boot + MyBatis-Plus 技术栈，覆盖 300+ 员工日常使用
-  （📊 请确认：覆盖人数是否准确）
-· 参与 5 次需求评审，产出 12 份接口文档，推动前后端联调效率提升约 30%
-  （📊 请确认：效率提升比例是否准确）
-· 主动发现并修复 20+ 个生产环境 Bug，含 1 个 P0 级数据一致性问题，
-  避免了月度结算数据的丢失风险
-· 优化慢 SQL 查询 5 条，将考勤报表接口响应时间从 3.2s 降至 0.4s
-  （📊 请确认：具体数字是否准确）
+AI 优化要点：
+· 用 STAR 法则重构：每段经历拆成「情境 → 任务 → 行动 → 结果」
+· 补充量化成果：用数字证明你的贡献（如 KPI 提升 %、团队规模、预算金额）
+· 植入行业关键词：对照目标岗位 JD 逐条匹配
+· 突出你的角色：把"参与"改成"负责"、"主导"、"独立完成"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🛠 项目经历
-【校园二手交易平台】| 后端开发 | 2024.09 - 2024.12
+🛠 项目 / 实践经历
+${projLine.trim()}
 
-项目背景：校园内闲置物品流转效率低，需要一个轻量级交易平台
-
-· 作为核心后端开发（3人团队），使用 Spring Boot + Vue.js 搭建全栈项目，
-  实现用户认证、商品发布、订单管理、实时消息 4 大功能模块
-· 设计并优化 MySQL 数据库表结构（8张核心表），通过索引优化
-  将商品列表查询耗时从 1.8s 压缩至 0.3s
-· 集成 JWT + Redis 实现登录态管理，支撑 50+ 并发用户的稳定访问
-· 编写 30+ 条单元测试，核心接口测试覆盖率达 85%
-· 项目上线 2 个月，注册用户 200+，完成交易 80+ 笔
-  （📊 请确认：用户和交易数据是否准确）
+AI 优化要点：
+· 补充项目背景和商业目标（让对方理解"为什么做"）
+· 说明你的具体贡献（不只是技术，还有协调、沟通、决策）
+· 量化业务成果（用户数、营收、效率提升、成本降低）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔧 专业技能
-· 后端：Java、Spring Boot、MyBatis-Plus、Spring Cloud（了解）、RESTful API
-· 数据库：MySQL、Redis、数据库索引优化、SQL 性能调优
-· 工具链：Git、Maven、Postman、Linux 基础命令
-· 其他：Python（数据分析方向）、Docker（了解）
+🔧 技能 / 证书
+${skillLine.trim()}
 
-（✅ 技能按熟练度分层，覆盖 JD 高频关键词）
+（✅ 按「精通 / 熟练 / 了解」分层，精准覆盖 JD 要求的关键词）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚠️ 需要你的确认：
-1. 标记「📊 请确认」的数字是否准确？这是你真实做出来的成果吗？
-2. 如果某个数字不完全精确，告诉 AI 真实数据，我帮你重新措辞
-3. 技能部分：还有哪些你用过但没写的工具/框架？补充进来`;
+⚠️ 需要你确认的事项：
+1. 所有量化数字是否准确？请核实后反馈
+2. 是否有遗漏的关键项目/经历/证书？补充进来
+3. 行业术语是否和你实际工作一致？（不同公司叫法可能不同）`;
 }
 
 function generateChangeLog(original, optimized) {
   return [
-    { tag: 'add', text: '补充了「主修课程」行，覆盖 JD 中的基础技能关键词（数据结构、算法、数据库等）' },
-    { tag: 'fix', text: '将「负责公司内部管理系统的开发」重构为 STAR 结构，明确你具体做了什么模块、用什么技术、产生了什么结果' },
-    { tag: 'add', text: '为实习经历添加了 5 处量化数据：覆盖用户数、接口数、Bug 数、SQL 优化前后的响应时间对比' },
-    { tag: 'fix', text: '将「参与项目需求分析」改为具体数字——「参与 5 次需求评审，产出 12 份接口文档」' },
-    { tag: 'fix', text: '将「修复系统 bug」升级为「修复 20+ 个 Bug，含 1 个 P0 级问题，避免了结算数据丢失」—— 突出了问题的重要性和你的主动性' },
-    { tag: 'add', text: '项目经历从 3 行扩展为完整的背景-任务-行动-结果，增加了项目背景、你的角色、技术细节和业务成果' },
-    { tag: 'del', text: '移除了「负责数据库的设计」这种模糊表述，改为「设计 8 张核心表 + 索引优化 + 性能对比」' },
-    { tag: 'fix', text: '技能列表从笼统的「熟悉Java/Python」改为分层展示（后端/数据库/工具链/其他），并补充了具体技术栈名称' },
-    { tag: 'add', text: '每段经历末尾标注了量化数据的确认提示，确保不编造经历' },
+    { tag: 'add', text: '补充了教育经历中的主修课程和学术亮点，覆盖目标岗位的基础要求' },
+    { tag: 'fix', text: '将模糊的"负责XX工作"重构为 STAR 结构——明确背景、任务、行动、可量化的结果' },
+    { tag: 'add', text: '为每段经历补充量化数据：业绩指标、团队规模、预算金额、效率提升比例等' },
+    { tag: 'fix', text: '将"参与""协助"等弱动词升级为"主导""独立负责""推动"，突出你的主动性' },
+    { tag: 'fix', text: '逐条对照目标岗位 JD，补充缺失的行业关键词和工具技能名称' },
+    { tag: 'add', text: '补充项目/实践经历的背景和商业目标，让 HR 理解你做的事"为什么重要"' },
+    { tag: 'del', text: '移除空洞的自我评价和"吃苦耐劳""性格开朗"等无信息量的表述' },
+    { tag: 'fix', text: '技能列表从笼统的"熟悉XX"改为分层展示（精通/熟练/了解），并注明具体工具版本' },
+    { tag: 'add', text: '所有量化数据标注"请确认"，确保 AI 不编造经历' },
   ];
 }
 
@@ -458,10 +483,10 @@ function generateMatchReport(text, jobTitle, industry) {
   const overall = Math.round((hardMatch + softMatch) / 2);
 
   const gaps = [
-    'AI/大模型相关项目经验（当前简历未体现，但这正是企业最看重的差异化技能）',
-    '分布式系统 / 高并发经验（中大厂 Java 岗高频要求）',
-    'Spring Cloud / 微服务体系（从单服务到微服务是晋升关键）',
-    '数据分析能力（Python + SQL 进阶，几乎所有岗位的加分项）',
+    '行业工具/软件实操经验（当前简历未体现，这是岗位硬性门槛）',
+    '可量化的业绩成果（数字说话——"提升了多少""节省了多少""完成了多少"）',
+    '行业认证/资格证书（CPA、PMP、电工证、教师资格证等，有些岗位必须持证上岗）',
+    '跨部门协作或项目管理的具体案例（证明你不只是执行者）',
   ];
 
   return { hardMatch, softMatch, overall, gaps };
@@ -638,9 +663,7 @@ function clearUpload() {
 function loadSample() {
   clearUpload();
   document.getElementById('resumeInput').value = SAMPLE_RESUME;
-  document.getElementById('jobTitle').value = 'Java开发工程师';
-  document.getElementById('industry').value = '互联网/科技';
-  // 平滑滚动到输入区域顶部
+  // 让用户自行选择目标岗位和行业，不做预设
   document.getElementById('inputCard').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -940,7 +963,7 @@ function renderResults(result, activeTab) {
         ${result.match.gaps.map(g => `<li>${g}</li>`).join('')}
       </ul>
       <p style="margin-top:12px; padding:12px; background:#f0f4ff; border-radius:8px; font-size:14px;">
-        💡 <strong>关键发现：</strong>以上技能缺口中，「AI/大模型项目经验」是当前校招市场最被看重的差异化项。我们的 <strong>AIGC 就业实训课程</strong> 恰好涵盖了这些技能——30 天让你简历上多 3 个 AI 项目经历。
+        💡 <strong>关键发现：</strong>以上技能缺口是简历被筛掉的主要原因。对照目标岗位 JD，逐条补上对应的关键词和项目经历，简历通过率至少翻倍。如果需要深度优化，点击下方按钮解锁完整版。
       </p>
     `;
   } else {
