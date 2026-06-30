@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>收款管理后台 — ResumeAI</title>
 <style>
-  :root {
-    --bg: #f5f5f5; --card: #fff; --primary: #2b3a67; --green: #2e7d32;
-    --orange: #e65100; --red: #c62828; --text: #1a1a1a; --radius: 12px;
-  }
+  :root { --bg: #f5f5f5; --card: #fff; --primary: #2b3a67; --green: #2e7d32; --orange: #e65100; --red: #c62828; --text: #1a1a1a; --radius: 12px; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
   .container { max-width: 600px; margin: 0 auto; }
@@ -16,29 +13,20 @@
   .header h1 { font-size: 24px; color: var(--primary); }
   .card { background: var(--card); border-radius: var(--radius); box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 20px; margin-bottom: 16px; }
   .card h3 { font-size: 16px; color: var(--primary); margin-bottom: 12px; }
-
-  .payment-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; transition: all 0.2s; }
-  .payment-item:hover { border-color: var(--primary); }
+  .payment-item { display: flex; align-items: center; justify-content: space-between; padding: 14px; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; }
   .payment-item.confirmed { background: #e8f5e9; border-color: #81c784; }
   .payment-info .amount { font-size: 20px; font-weight: 800; }
   .payment-info .amount.basic { color: var(--orange); }
   .payment-info .amount.pro { color: var(--green); }
-  .payment-info .session-id { font-size: 11px; color: #999; font-family: monospace; }
+  .payment-info .id { font-size: 11px; color: #999; font-family: monospace; }
   .payment-info .time { font-size: 11px; color: #999; }
-  .btn-confirm { padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; color: #fff; background: var(--green); transition: all 0.2s; }
-  .btn-confirm:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,125,50,0.3); }
-  .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-confirm { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; color: #fff; background: var(--green); }
+  .btn-confirm:active { opacity: 0.8; }
   .empty { text-align: center; padding: 40px; color: #999; }
-  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .status-dot.pending { background: var(--orange); animation: pulse 1.5s infinite; }
-  .status-dot.confirmed { background: var(--green); }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .stat-box { background: #f9fafb; border-radius: 10px; padding: 16px; text-align: center; }
   .stat-box .num { font-size: 28px; font-weight: 800; }
   .stat-box .label { font-size: 12px; color: #999; }
-  .refresh-btn { display: inline-block; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; background: #fff; border: 1px solid #e0e0e0; color: #666; margin-left: 8px; }
-  .refresh-btn:hover { background: #f0f0f0; }
   .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 10px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,0.2); animation: fadeOut 2.5s forwards; }
   @keyframes fadeOut { 0%,70% { opacity:1; } 100% { opacity:0; } }
 </style>
@@ -46,29 +34,20 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>💼 收款管理后台</h1>
-    <p style="color:#999; font-size:13px;">用户扫码支付后，点一下确认，系统自动为用户启动优化</p>
+    <h1>💼 收款确认</h1>
+    <p style="color:#999; font-size:13px;">收到微信到账通知后，在这里确认，系统自动为用户启动优化</p>
   </div>
 
-  <!-- 统计 -->
   <div class="stats">
-    <div class="stat-box">
-      <div class="num" id="pendingCount" style="color:var(--orange);">0</div>
-      <div class="label">待确认</div>
-    </div>
-    <div class="stat-box">
-      <div class="num" id="todayCount" style="color:var(--green);">0</div>
-      <div class="label">今日已确认</div>
-    </div>
+    <div class="stat-box"><div class="num" id="pendingCount" style="color:var(--orange);">0</div><div class="label">待确认</div></div>
+    <div class="stat-box"><div class="num" id="todayCount" style="color:var(--green);">0</div><div class="label">今日已确认</div></div>
   </div>
 
-  <!-- 待确认列表 -->
   <div class="card">
-    <h3>📋 待确认收款 <button class="refresh-btn" onclick="loadPayments()">🔄 刷新</button></h3>
+    <h3>📋 待确认收款</h3>
     <div id="pendingList"><div class="empty">加载中…</div></div>
   </div>
 
-  <!-- 已确认列表 -->
   <div class="card">
     <h3>✅ 最近已确认</h3>
     <div id="confirmedList"><div class="empty">暂无</div></div>
@@ -76,102 +55,63 @@
 </div>
 
 <script>
-const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
-// 本地存储所有已创建的会话 URL（实际部署时改用数据库）
-// 支付索引 URL — 与 index.html 共享，手机和电脑通过此 URL 通信
-const INDEX_URL = 'https://jsonblob.com/api/jsonBlob/019f173f-a3ec-77dc-939a-095e47c680d4';
+const KEY = 'resume_payments';
 
-async function loadPayments() {
+function loadPayments() {
+  const sessions = JSON.parse(localStorage.getItem(KEY) || '[]').reverse();
+  const pending = sessions.filter(s => s.status === 'pending');
+  const confirmed = sessions.filter(s => s.status === 'confirmed').slice(0, 10);
+
+  document.getElementById('pendingCount').textContent = pending.length;
+  document.getElementById('todayCount').textContent = confirmed.length;
+
   const pendingDiv = document.getElementById('pendingList');
-  pendingDiv.innerHTML = '<div class="empty">加载中…</div>';
-
-  try {
-    const res = await fetch(INDEX_URL);
-    const index = await res.json();
-    const sessions = index.sessions || [];
-
-    const pending = sessions.filter(s => s.status === 'pending');
-    const confirmed = sessions.filter(s => s.status === 'confirmed').slice(-10).reverse();
-
-    document.getElementById('pendingCount').textContent = pending.length;
-    document.getElementById('todayCount').textContent = confirmed.length;
-
-    // 渲染待确认
-    if (pending.length === 0) {
-      pendingDiv.innerHTML = '<div class="empty">✅ 暂无待确认收款</div>';
-    } else {
-      pendingDiv.innerHTML = pending.map(s => `
-        <div class="payment-item" id="item-${s.id}">
-          <div class="payment-info">
-            <div><span class="amount ${s.tier}">¥${s.amount}.00</span> <span style="font-size:12px;color:#999;">${s.tier === 'basic' ? '基础优化' : '深度优化'}</span></div>
-            <div class="session-id">${s.id}</div>
-            <div class="time">${formatTime(s.createdAt)}</div>
-          </div>
-          <button class="btn-confirm" onclick="confirmPayment('${s.id}', '${s.blobUrl}')">✅ 确认收款</button>
+  if (pending.length === 0) {
+    pendingDiv.innerHTML = '<div class="empty">✅ 暂无待确认收款</div>';
+  } else {
+    pendingDiv.innerHTML = pending.map(s => `
+      <div class="payment-item" id="item-${s.id}">
+        <div class="payment-info">
+          <div><span class="amount ${s.tier}">¥${s.amount}.00</span> <span style="font-size:12px;color:#999;">${s.tier === 'basic' ? '基础优化' : '深度优化'}</span></div>
+          <div class="id">${s.id}</div>
+          <div class="time">${formatTime(s.createdAt)}</div>
         </div>
-      `).join('');
-    }
+        <button class="btn-confirm" onclick="confirm('${s.id}')">✅ 确认收款</button>
+      </div>
+    `).join('');
+  }
 
-    // 渲染已确认
-    const confDiv = document.getElementById('confirmedList');
-    if (confirmed.length === 0) {
-      confDiv.innerHTML = '<div class="empty">暂无</div>';
-    } else {
-      confDiv.innerHTML = confirmed.map(s => `
-        <div class="payment-item confirmed">
-          <div class="payment-info">
-            <div><span class="amount ${s.tier}">¥${s.amount}.00</span> <span style="font-size:12px;color:#999;">${s.tier === 'basic' ? '基础优化' : '深度优化'}</span></div>
-            <div class="session-id">${s.id}</div>
-            <div class="time">${formatTime(s.createdAt)}</div>
-          </div>
-          <span style="color:var(--green); font-weight:600;">✅ 已确认</span>
+  const confDiv = document.getElementById('confirmedList');
+  if (confirmed.length === 0) {
+    confDiv.innerHTML = '<div class="empty">暂无</div>';
+  } else {
+    confDiv.innerHTML = confirmed.map(s => `
+      <div class="payment-item confirmed">
+        <div class="payment-info">
+          <div><span class="amount ${s.tier}">¥${s.amount}.00</span></div>
+          <div class="id">${s.id}</div>
+          <div class="time">${formatTime(s.createdAt)}</div>
         </div>
-      `).join('');
-    }
-  } catch(e) {
-    pendingDiv.innerHTML = '<div class="empty" style="color:var(--red);">加载失败，请检查网络后刷新</div>';
-    console.error(e);
+        <span style="color:var(--green); font-weight:600;">✅ 已确认</span>
+      </div>
+    `).join('');
   }
 }
 
-async function confirmPayment(sessionId, blobUrl) {
-  const btn = document.querySelector(`#item-${sessionId} .btn-confirm`);
-  if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
+function confirm(sessionId) {
+  const sessions = JSON.parse(localStorage.getItem(KEY) || '[]');
+  const session = sessions.find(s => s.id === sessionId);
+  if (!session) return;
 
-  try {
-    // 更新 blob 状态
-    const res = await fetch(blobUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: sessionId,
-        status: 'confirmed',
-        confirmedAt: new Date().toISOString()
-      })
-    });
-    if (!res.ok) throw new Error('update failed');
+  session.status = 'confirmed';
+  session.confirmedAt = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(sessions));
 
-    // 更新索引中的状态
-    const idxRes = await fetch(INDEX_URL);
-    const index = await idxRes.json();
-    const sessions = index.sessions || [];
-    const session = sessions.find(s => s.id === sessionId);
-    if (session) {
-      session.status = 'confirmed';
-      session.confirmedAt = new Date().toISOString();
-      await fetch(INDEX_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessions, updatedAt: new Date().toISOString() })
-      });
-    }
+  // 手动触发 storage 事件（本标签页不自动触发）
+  window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: JSON.stringify(sessions) }));
 
-    showToast('✅ 收款已确认！用户端即将自动开始优化');
-    loadPayments();
-  } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = '✅ 确认收款'; }
-    alert('确认失败，请重试：' + e.message);
-  }
+  showToast('✅ 已确认！用户端即将开始优化');
+  loadPayments();
 }
 
 function formatTime(iso) {
@@ -188,9 +128,8 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 2600);
 }
 
-// 定时刷新
 loadPayments();
-setInterval(loadPayments, 5000);
+setInterval(loadPayments, 3000);
 </script>
 </body>
 </html>

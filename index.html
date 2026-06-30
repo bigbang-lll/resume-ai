@@ -412,7 +412,6 @@ const AI_SYSTEM_PROMPT = `你是一位资深 HR + 简历优化专家，拥有 10
 const WECHAT_QR_URL = '微信收款码.jpg';  // 付款弹窗用：微信收款码
 const WECHAT_CONTACT_QR_URL = '微信二维码.jpg';  // 引流/联系方式用：微信二维码
 const WECHAT_ID = 'resume_ai_helper';  // 微信号
-const PAYMENT_INDEX_URL = 'https://jsonblob.com/api/jsonBlob/019f173f-a3ec-77dc-939a-095e47c680d4';  // 支付索引（手机+电脑共享）
 
 // ============================================================
 // Demo 示例简历
@@ -978,9 +977,8 @@ function renderWechatHook() {
 }
 
 // ============================================================
-// 付款弹窗 — 手机确认收款后自动倒计时
+// 付款弹窗 — 管理员确认收款后自动倒计时
 // ============================================================
-const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob';
 let paymentTimer = null;
 let paymentPollTimer = null;
 
@@ -1063,71 +1061,72 @@ async function showPaymentModal(tier) {
     if (e.target === overlay) closePaymentModal();
   };
 
-  // 创建支付会话 → 注册到索引 → 轮询等待确认
+  // 创建支付会话 → 等待同设备 admin.html 确认
   if (tier === 'basic' || tier === 'pro') {
-    try {
-      const sessionId = 'pay_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-      const res = await fetch(JSONBLOB_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: sessionId,
-          status: 'pending',
-          tier: tier,
-          amount: tier === 'basic' ? 1 : 5,
-          createdAt: new Date().toISOString()
-        })
-      });
-      if (res.ok) {
-        const blobUrl = res.headers.get('Location');
-        // 注册到索引
-        try {
-          const idxRes = await fetch(PAYMENT_INDEX_URL);
-          const idx = await idxRes.json();
-          idx.sessions = idx.sessions || [];
-          idx.sessions.push({ id: sessionId, blobUrl, tier, amount: tier === 'basic' ? 1 : 5, status: 'pending', createdAt: new Date().toISOString() });
-          idx.updatedAt = new Date().toISOString();
-          await fetch(PAYMENT_INDEX_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(idx) });
-        } catch(e) { console.warn('索引注册失败', e); }
-        // 开始轮询
-        startPaymentPolling(blobUrl, tier);
-        return;
-      }
-    } catch (e) { console.warn('创建支付会话失败', e); }
-    // API 不可用
-    const el = document.getElementById('countdownText');
-    if (el) { el.textContent = '⚠️ 网络异常，请关闭后重试'; el.style.color = 'var(--red)'; }
-  }
-}
+    const sessionId = 'pay_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    const session = {
+      id: sessionId,
+      status: 'pending',
+      tier: tier,
+      amount: tier === 'basic' ? 1 : 5,
+      createdAt: new Date().toISOString()
+    };
+    // 存入 localStorage，admin.html 在另一个标签页读取
+    const sessions = JSON.parse(localStorage.getItem('resume_payments') || '[]');
+    sessions.push(session);
+    // 只保留最近 50 条
+    if (sessions.length > 50) sessions.splice(0, sessions.length - 50);
+    localStorage.setItem('resume_payments', JSON.stringify(sessions));
 
-// 轮询等待管理员在手机 admin.html 上确认
-function startPaymentPolling(sessionUrl, tier) {
-  clearInterval(paymentPollTimer);
-  let attempts = 0;
-  paymentPollTimer = setInterval(async () => {
-    attempts++;
-    try {
-      const res = await fetch(sessionUrl);
-      if (!res.ok) throw new Error('poll failed');
-      const data = await res.json();
-      if (data.status === 'confirmed') {
+    // 监听 admin 确认（同设备 storage 事件）
+    function onStorage(e) {
+      if (e.key === 'resume_payments' && e.newValue) {
+        const updated = JSON.parse(e.newValue);
+        const mine = updated.find(s => s.id === sessionId);
+        if (mine && mine.status === 'confirmed') {
+          window.removeEventListener('storage', onStorage);
+          clearInterval(paymentPollTimer);
+          const el = document.getElementById('countdownText');
+          if (el) { el.textContent = '✅ 收款已确认！'; el.style.color = 'var(--green)'; }
+          startPaymentCountdown(tier);
+        }
+      }
+    }
+    window.addEventListener('storage', onStorage);
+
+    // 清理旧监听
+    paymentPollTimer = setInterval(() => {
+      // storage 事件只在其他标签页触发，本标签页用轮询兜底
+      const updated = JSON.parse(localStorage.getItem('resume_payments') || '[]');
+      const mine = updated.find(s => s.id === sessionId);
+      if (mine && mine.status === 'confirmed') {
+        window.removeEventListener('storage', onStorage);
         clearInterval(paymentPollTimer);
         const el = document.getElementById('countdownText');
         if (el) { el.textContent = '✅ 收款已确认！'; el.style.color = 'var(--green)'; }
-        // 确认后倒计时 15 秒再开始
         startPaymentCountdown(tier);
-        return;
       }
-    } catch (e) { console.warn('轮询失败', e); }
-    if (attempts >= 300) {
-      clearInterval(paymentPollTimer);
-      const el = document.getElementById('countdownText');
-      if (el) { el.textContent = '⚠️ 等待超时，请关闭后重试'; el.style.color = 'var(--red)'; }
-    }
-  }, 2000);
+    }, 1000);
+
+    // 超时
+    let pollAttempts = 0;
+    const timeoutCheck = setInterval(() => {
+      pollAttempts++;
+      if (pollAttempts >= 600) {
+        clearInterval(timeoutCheck);
+        clearInterval(paymentPollTimer);
+        window.removeEventListener('storage', onStorage);
+        const el = document.getElementById('countdownText');
+        if (el) { el.textContent = '⚠️ 等待超时，请关闭后重试'; el.style.color = 'var(--red)'; }
+      }
+    }, 1000);
+    // 用 paymentPollTimer 存超时定时器以便 closePaymentModal 清理
+    clearInterval(paymentPollTimer);
+    paymentPollTimer = timeoutCheck;
+  }
 }
 
-// 回退：15 秒倒计时（API 不可用时），让用户有足够时间扫码
+// 15 秒倒计时 → 自动开始优化
 function startPaymentCountdown(tier) {
   clearTimeout(paymentTimer);
   let sec = 15;
